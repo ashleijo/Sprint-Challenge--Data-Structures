@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable class-methods-use-this */
-const { LimitedArray, getIndexBelowMax } = require('./hash-table-helpers');
+const { LimitedArray, getIndexBelowMax, LinkedList } = require('./hash-table-helpers');
 
 class HashTable {
   constructor(limit = 8) {
@@ -36,10 +36,23 @@ class HashTable {
   insert(key, value) {
     if (this.capacityIsFull()) this.resize();
     const index = getIndexBelowMax(key.toString(), this.limit);
-    let bucket = this.storage.get(index) || [];
+    const bucket = this.storage.get(index) || [];
 
-    bucket = bucket.filter(item => item[0] !== key);
-    bucket.push([key, value]);
+    if (bucket.length === 0) {
+      const newBucket = new LinkedList();
+      newBucket.addToTail([key, value]);
+      bucket.push(newBucket); // handles collisions? (and a bunch of tests.)
+      this.storage.set(index, bucket);
+      return;
+    }
+    if (bucket[0].containsKey(key)) {
+      bucket[0].overwriteValue(key, value);
+      this.storage.set(index, bucket);
+      return;
+    }
+    // Still trying to figure out how to update keys
+    // with new values...
+    bucket[0].addToTail([key, value]);
     this.storage.set(index, bucket);
   }
   // Removes the key, value pair from the hash table
@@ -47,10 +60,10 @@ class HashTable {
   // Remove the key, value pair from the bucket
   remove(key) {
     const index = getIndexBelowMax(key.toString(), this.limit);
-    let bucket = this.storage.get(index);
+    const bucket = this.storage.get(index);
 
     if (bucket) {
-      bucket = bucket.filter(item => item[0] !== key);
+      bucket[0].removeHead();
       this.storage.set(index, bucket);
     }
   }
@@ -60,12 +73,12 @@ class HashTable {
   retrieve(key) {
     const index = getIndexBelowMax(key.toString(), this.limit);
     const bucket = this.storage.get(index);
-    let retrieved;
     if (bucket) {
-      retrieved = bucket.filter(item => item[0] === key)[0];
+      // if (bucket[0].contains(key)) {
+      return bucket[0].returnValueIfContainsKey(key);
+      // }
     }
-
-    return retrieved ? retrieved[1] : undefined;
+    return undefined;
   }
 }
 
